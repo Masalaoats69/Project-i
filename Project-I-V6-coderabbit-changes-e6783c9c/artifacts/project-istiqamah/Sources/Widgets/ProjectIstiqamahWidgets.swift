@@ -1,0 +1,14 @@
+import SwiftUI
+import WidgetKit
+
+@main
+struct ProjectIstiqamahWidgets: WidgetBundle {
+    var body: some Widget {
+        BlockLiveActivityWidget()
+        IstiqamahFocusWidget()
+        IstiqamahConsistencyWidget()
+        IstiqamahMessageWidget()
+        IstiqamahPulseWidget()
+        IstiqamahPlainTextWidget()
+    }
+}

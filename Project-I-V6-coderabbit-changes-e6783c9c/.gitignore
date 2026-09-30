@@ -1,0 +1,29 @@
+# Generated Xcode output
+artifacts/project-istiqamah/build/
+artifacts/project-istiqamah/ProjectIstiqamah.xcodeproj/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Signing material and local configuration
+*.cer
+*.key
+*.mobileprovision
+*.p8
+*.p12
+*.pem
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
