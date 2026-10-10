@@ -1,26 +1,35 @@
-# Build the unsigned iOS IPA
+# Test and release the iOS IPA
 
-The workflow in `.github/workflows/build-ios-ipa.yml` creates an unsigned,
-device-targeted IPA on a GitHub-hosted macOS runner. It does not need Apple
-Developer credentials or repository secrets.
+The workflow in `.github/workflows/build-ios-ipa.yml` tests the native iOS app
+on an available iPhone simulator and creates an unsigned, device-targeted IPA
+on a GitHub-hosted macOS runner. It does not need Apple Developer credentials
+or repository secrets.
 
 ## Run it
 
 1. Open the repository's **Actions** tab.
-2. Select **Build unsigned iOS IPA**.
+2. Select **Test and release iOS IPA**.
 3. Choose **Run workflow**.
-4. Download the `project-istiqamah-ios-unsigned` artifact when the job passes.
+4. Download the `project-istiqamah-ios-sidestore` artifact when the package job passes.
 
-Pushing a tag whose name starts with `v` also runs the workflow.
+Pull requests and pushes to `main` run the test suite. A manual run or a tag
+whose name starts with `v` also builds the IPA. A version tag, such as `v1.0.1`,
+creates or updates a GitHub Release and attaches the IPA to it.
 
 ## What the workflow does
 
-The job installs XcodeGen, generates the Xcode project from the checked-in
-`project.json`, and builds the SwiftUI app and ActivityKit widget extension for
-the physical-device SDK with code signing disabled. It then places the app
-inside `Payload/`, creates `ProjectIstiqamah-unsigned.ipa`, verifies the native
-Live Activity extension is embedded, checks the archive, and uploads it for 14
-days. Expo, React Native, Node.js, and CocoaPods are not part of this build.
+The test job installs XcodeGen, generates the Xcode project from the checked-in
+`project.json`, selects an installed iPhone simulator, and runs the unit and UI
+test targets. Its `.xcresult` bundle is retained for 14 days, including when a
+test fails.
+
+For manual and version-tag runs, the package job builds the SwiftUI app and
+ActivityKit widget extension for the physical-device SDK with code signing
+disabled. It then places the app inside `Payload/`, creates
+`ProjectIstiqamah-SideStore.ipa`, verifies the native Live Activity extension
+is embedded, checks the archive, and uploads it for 14 days. A version-tag run
+also attaches that IPA to the corresponding GitHub Release. Expo, React Native,
+Node.js, and CocoaPods are not part of this build.
 
 ## Installing it
 

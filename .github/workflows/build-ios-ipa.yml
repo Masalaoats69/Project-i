@@ -1,8 +1,11 @@
-name: Build SideStore-ready iOS IPA
+name: Test and release iOS IPA
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
+    branches: [main]
     tags:
       - "v*"
 
@@ -10,38 +13,83 @@ permissions:
   contents: read
 
 concurrency:
-  group: ios-ipa-${{ github.ref }}
+  group: ios-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  APP_DIR: artifacts/project-istiqamah
+  SCHEME: ProjectIstiqamah
+
 jobs:
-  build-ios:
-    name: Build SideStore-ready IPA
+  test:
+    name: Test on iPhone Simulator
     runs-on: macos-26
     timeout-minutes: 60
-    env:
-      CI: "true"
-      APP_DIR: artifacts/project-istiqamah
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Install XcodeGen
         run: brew install xcodegen
-
       - name: Generate Xcode project
         working-directory: ${{ env.APP_DIR }}
         run: xcodegen generate --spec project.json
+      - name: Select an available iPhone Simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+          udid="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ { print $2; exit }')"
+          if [[ -z "$udid" ]]; then
+            echo "No available iPhone simulator was found." >&2
+            xcrun simctl list devices available
+            exit 1
+          fi
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Run unit and UI tests
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+          xcodebuild test \
+            -project ProjectIstiqamah.xcodeproj \
+            -scheme "${{ env.SCHEME }}" \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}" \
+            -derivedDataPath "$PWD/build/TestDerivedData" \
+            -resultBundlePath "$PWD/build/ProjectIstiqamah.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-istiqamah-test-results
+          path: artifacts/project-istiqamah/build/ProjectIstiqamah.xcresult
+          if-no-files-found: warn
+          retention-days: 14
 
+  package:
+    name: Build SideStore-ready IPA
+    needs: test
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ${{ env.APP_DIR }}
+        run: xcodegen generate --spec project.json
       - name: Build unsigned device app
         working-directory: ${{ env.APP_DIR }}
         run: |
           set -euo pipefail
-
           rm -rf build
           xcodebuild \
             -project ProjectIstiqamah.xcodeproj \
-            -scheme ProjectIstiqamah \
+            -scheme "${{ env.SCHEME }}" \
             -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
@@ -50,45 +98,25 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             clean build
-
       - name: Embed entitlements and package IPA
         working-directory: ${{ env.APP_DIR }}
         run: |
           set -euo pipefail
-
           app_path="build/DerivedData/Build/Products/Release-iphoneos/ProjectIstiqamah.app"
           ipa_path="build/ProjectIstiqamah-SideStore.ipa"
           widget_path="$app_path/PlugIns/ProjectIstiqamahWidgets.appex"
-
           if [[ ! -d "$app_path" ]]; then
             echo "Expected app was not produced at $app_path" >&2
             find build/DerivedData/Build/Products -maxdepth 3 -type d -name "*.app" -print
             exit 1
           fi
-
           if [[ ! -d "$widget_path" ]]; then
             echo "Expected Live Activity extension was not embedded at $widget_path" >&2
             exit 1
           fi
-
-          # SideStore discovers the capabilities it must provision from the
-          # existing Mach-O entitlements. An ad-hoc signature preserves that
-          # metadata for SideStore to read and replace with its own signature.
-          codesign \
-            --force \
-            --sign - \
-            --entitlements Config/ProjectIstiqamahWidgets.entitlements \
-            --generate-entitlement-der \
-            "$widget_path"
-          codesign \
-            --force \
-            --sign - \
-            --entitlements Config/ProjectIstiqamah.entitlements \
-            --generate-entitlement-der \
-            "$app_path"
-
+          codesign --force --sign - --entitlements Config/ProjectIstiqamahWidgets.entitlements --generate-entitlement-der "$widget_path"
+          codesign --force --sign - --entitlements Config/ProjectIstiqamah.entitlements --generate-entitlement-der "$app_path"
           codesign --verify --deep --strict "$app_path"
-
           for signed_path in "$app_path" "$widget_path"; do
             entitlements="$(codesign --display --entitlements :- "$signed_path" 2>/dev/null)"
             if ! grep -Fq "group.com.projectistiqamah.shared" <<<"$entitlements"; then
@@ -96,19 +124,15 @@ jobs:
               exit 1
             fi
           done
-
           rm -rf build/package
           mkdir -p build/package/Payload
           ditto "$app_path" "build/package/Payload/ProjectIstiqamah.app"
-
           (
             cd build/package
             /usr/bin/zip -qry "../ProjectIstiqamah-SideStore.ipa" Payload
           )
-
           unzip -tq "$ipa_path"
           test -s "$ipa_path"
-
       - name: Upload SideStore-ready IPA
         uses: actions/upload-artifact@v4
         with:
@@ -116,3 +140,29 @@ jobs:
           path: artifacts/project-istiqamah/build/ProjectIstiqamah-SideStore.ipa
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: package
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: project-istiqamah-ios-sidestore
+          path: release-assets
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ipa="release-assets/ProjectIstiqamah-SideStore.ipa"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ipa#ProjectIstiqamah-SideStore.ipa" --clobber
+          else
+            gh release create "$TAG" "$ipa#ProjectIstiqamah-SideStore.ipa" --title "$TAG" --generate-notes
+          fi
