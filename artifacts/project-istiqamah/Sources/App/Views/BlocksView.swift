@@ -182,7 +182,7 @@ struct BlocksView: View {
     }
 }
 
-private struct BlockGuideView: View {
+struct BlockGuideView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
