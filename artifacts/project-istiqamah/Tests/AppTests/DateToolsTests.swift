@@ -2,6 +2,50 @@ import XCTest
 @testable import ProjectIstiqamah
 
 final class DateToolsTests: XCTestCase {
+    func testBackgroundWidgetRefreshUsesLocalTextAndAdvancesSchedule() throws {
+        let day = try XCTUnwrap(DateTools.date(from: "2026-09-17"))
+        let morning = FocusBlock(name: "Morning", startTime: "09:00", endTime: "10:00", note: "")
+        let afternoon = FocusBlock(name: "Afternoon", startTime: "14:00", endTime: "15:00", note: "")
+        let saved = AppSnapshot(
+            version: 1, exportedAt: day, blocks: [morning, afternoon],
+            preferences: AppPreferences(widgetMessage: "My reminder", plainWidgetText: "My plain text")
+        )
+        let morningTime = try XCTUnwrap(DateTools.date(for: "09:30", on: day))
+        let morningWidget = BackgroundRefreshManager.widgetSnapshot(from: saved, now: morningTime)
+        XCTAssertEqual(morningWidget.currentBlock?.id, morning.id)
+        XCTAssertEqual(morningWidget.nextBlock?.id, afternoon.id)
+
+        let afternoonTime = try XCTUnwrap(DateTools.date(for: "14:30", on: day))
+        let updated = BackgroundRefreshManager.widgetSnapshot(from: saved, now: afternoonTime)
+        XCTAssertEqual(updated.currentBlock?.id, afternoon.id)
+        XCTAssertEqual(updated.updatedAt, afternoonTime)
+        XCTAssertEqual(updated.personalMessage, "My reminder")
+        XCTAssertEqual(updated.plainWidgetText, "My plain text")
+    }
+
+    func testBackgroundWidgetRefreshPreservesCompletionAndPauseState() throws {
+        let day = try XCTUnwrap(DateTools.date(from: "2026-09-17"))
+        let now = try XCTUnwrap(DateTools.date(for: "09:30", on: day))
+        let key = DateTools.key(day)
+        let finished = FocusBlock(
+            name: "Finished", startTime: "08:00", endTime: "09:00", note: "", completedDates: [key]
+        )
+        let current = FocusBlock(name: "Current", startTime: "09:00", endTime: "10:00", note: "")
+        let archived = FocusBlock(
+            name: "Archived", startTime: "09:00", endTime: "10:00", note: "", archivedAt: day
+        )
+        let saved = AppSnapshot(
+            version: 1, exportedAt: day, blocks: [finished, archived, current],
+            preferences: AppPreferences(), pausedBlocks: ["\(current.id.uuidString):\(key)": now]
+        )
+        let updated = BackgroundRefreshManager.widgetSnapshot(from: saved, now: now)
+        XCTAssertEqual(updated.currentBlock?.id, current.id)
+        XCTAssertEqual(updated.currentBlock?.isPaused, true)
+        XCTAssertEqual(updated.completedToday, 1)
+        XCTAssertEqual(updated.totalToday, 2)
+        XCTAssertEqual(updated.currentStreak, 1)
+    }
+
     func testTimePickerValuesRoundTripAsCanonicalTimes() throws {
         let day = try XCTUnwrap(DateTools.date(from: "2026-09-17"))
         let selectedTime = try XCTUnwrap(DateTools.date(for: "23:45", on: day))

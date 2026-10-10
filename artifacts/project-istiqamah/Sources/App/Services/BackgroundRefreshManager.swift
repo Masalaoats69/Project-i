@@ -1,5 +1,6 @@
 import BackgroundTasks
 import Foundation
+import WidgetKit
 
 final class BackgroundRefreshManager {
     static let shared = BackgroundRefreshManager()
@@ -39,6 +40,12 @@ final class BackgroundRefreshManager {
                 let snapshot = try loadSnapshot()
                 schedule(blocks: snapshot.blocks)
 
+                let widgetSnapshot = Self.widgetSnapshot(from: snapshot)
+                let widgetSaved = IstiqamahWidgetStore.save(widgetSnapshot)
+                if widgetSaved {
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
+
                 async let notificationSync = NotificationManager.shared.sync(
                     blocks: snapshot.blocks,
                     preferences: snapshot.preferences
@@ -50,7 +57,7 @@ final class BackgroundRefreshManager {
                 )
                 _ = await activitySync
                 _ = await notificationSync
-                task.setTaskCompleted(success: !Task.isCancelled)
+                task.setTaskCompleted(success: widgetSaved && !Task.isCancelled)
             } catch {
                 schedule(blocks: [])
                 task.setTaskCompleted(success: false)
@@ -88,5 +95,51 @@ final class BackgroundRefreshManager {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(AppSnapshot.self, from: data)
+    }
+
+    // Rebuild from local data even when the app has not been opened since a block ended.
+    static func widgetSnapshot(from appSnapshot: AppSnapshot, now: Date = Date()) -> IstiqamahWidgetSnapshot {
+        let activeBlocks = appSnapshot.blocks.filter { $0.archivedAt == nil }
+        let schedule = DateTools.schedule(for: activeBlocks, around: now, days: 2)
+        let available = schedule.filter { !$0.block.completedDates.contains($0.dateKey) }
+        let current = available.first { $0.start <= now && now < $0.end }
+        let next = available.first { $0.start > now }
+        let todayKey = DateTools.key(now)
+        let today = schedule.filter { $0.dateKey == todayKey }
+        let completedToday = today.filter { $0.block.completedDates.contains(todayKey) }.count
+        let completedDates = Set(appSnapshot.blocks.flatMap(\.completedDates))
+        var streakDate = now
+        var currentStreak = 0
+        while completedDates.contains(DateTools.key(streakDate)) {
+            currentStreak += 1
+            guard let previous = Calendar.current.date(byAdding: .day, value: -1, to: streakDate) else {
+                break
+            }
+            streakDate = previous
+        }
+        return IstiqamahWidgetSnapshot(
+            updatedAt: now,
+            personalMessage: appSnapshot.preferences.widgetMessage,
+            plainText: appSnapshot.preferences.plainWidgetText,
+            currentBlock: current.map { widgetSummary($0, pausedBlocks: appSnapshot.pausedBlocks ?? [:]) },
+            nextBlock: next.map { widgetSummary($0, pausedBlocks: appSnapshot.pausedBlocks ?? [:]) },
+            completedToday: completedToday,
+            totalToday: today.count,
+            currentStreak: currentStreak
+        )
+    }
+
+    private static func widgetSummary(
+        _ item: ScheduledBlock,
+        pausedBlocks: [String: Date]
+    ) -> WidgetBlockSummary {
+        WidgetBlockSummary(
+            id: item.block.id,
+            name: item.block.name,
+            dateKey: item.dateKey,
+            startDate: item.start,
+            endDate: item.end,
+            isPaused: pausedBlocks[item.id] != nil
+        )
     }
 }
