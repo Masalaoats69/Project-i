@@ -249,11 +249,13 @@ private struct BlockEditor: View {
                         selection: timeBinding(\.startTime),
                         displayedComponents: .hourAndMinute
                     )
+                    .accessibilityIdentifier("blockEditor.startTime")
                     DatePicker(
                         "End",
                         selection: timeBinding(\.endTime),
                         displayedComponents: .hourAndMinute
                     )
+                    .accessibilityIdentifier("blockEditor.endTime")
                     TextField("Note", text: $block.note, axis: .vertical)
                 } header: {
                     Text("Block")
