@@ -16,8 +16,10 @@ final class ProjectIstiqamahUITests: XCTestCase {
 
         app.tabBars.buttons["Blocks"].tap()
         app.navigationBars.buttons["Add block"].tap()
-        XCTAssertTrue(app.datePickers["Start"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.datePickers["End"].exists)
+        XCTAssertTrue(app.navigationBars["New Block"].waitForExistence(timeout: 5))
+        // SwiftUI exposes the visible Start/End labels separately from the compact pickers.
+        XCTAssertTrue(app.datePickers["blockEditor.startTime"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.datePickers["blockEditor.endTime"].exists)
         app.navigationBars.buttons["Cancel"].tap()
 
         let reorder = app.navigationBars.buttons["Reorder"]
