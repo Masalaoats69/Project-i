@@ -4,6 +4,7 @@ import SwiftUI
 struct TodayView: View {
     @EnvironmentObject private var store: AppStore
     @State private var now = Date()
+    @State private var showingBlockGuide = false
     let onStartBlock: () -> Void
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -52,6 +53,19 @@ struct TodayView: View {
             .background(AppTheme.background.ignoresSafeArea())
             .navigationTitle("Project I")
             .foregroundStyle(AppTheme.primaryText)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingBlockGuide = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel("About blocks and important tasks")
+                }
+            }
+            .sheet(isPresented: $showingBlockGuide) {
+                BlockGuideView()
+            }
         }
         .onReceive(timer) { now = $0 }
         .onReceive(store.$timelineDate) { now = $0 }
@@ -161,7 +175,7 @@ struct TodayView: View {
                     .tint(AppTheme.primary)
                 }
                 if phase == .running {
-                    Button(completed ? "Completed" : "End") {
+                    Button(completed ? "Completed" : "Complete") {
                         store.toggleBlock(item.block.id, dateKey: item.dateKey)
                     }
                     .buttonStyle(.borderedProminent)
@@ -178,7 +192,12 @@ struct TodayView: View {
     private func actionsCard(_ item: ScheduledBlock) -> some View {
         if !item.block.actions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("ACTIONS")
+                HStack {
+                    Text("IMPORTANT TASKS")
+                    Spacer()
+                    Text(taskProgressSummary(for: item))
+                        .foregroundStyle(AppTheme.primary)
+                }
                     .font(.caption2.bold())
                     .tracking(1.4)
                     .foregroundStyle(AppTheme.secondaryText)
@@ -194,7 +213,7 @@ struct TodayView: View {
     private var dayList: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text(isToday ? "TODAY'S SYSTEM" : "SELECTED DAY'S SYSTEM")
+                Text(isToday ? "TODAY'S BLOCKS" : "SELECTED DAY'S BLOCKS")
                     .font(.caption2.bold())
                     .tracking(1.4)
                     .foregroundStyle(AppTheme.secondaryText)
@@ -269,11 +288,19 @@ struct TodayView: View {
             }
 
             if item.block.actions.isEmpty {
-                Text("No actions")
+                Text("No important tasks added")
                     .font(.caption)
                     .foregroundStyle(AppTheme.tertiaryText)
                     .padding(.leading, 54)
             } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "checklist")
+                    Text(taskProgressSummary(for: item))
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(AppTheme.secondaryText)
+                .padding(.leading, 54)
+                .padding(.bottom, 2)
                 VStack(spacing: 4) {
                     ForEach(item.block.actions) { action in
                         actionRow(action, in: item)
@@ -325,6 +352,12 @@ struct TodayView: View {
             )
         }
         .frame(minHeight: 44)
+    }
+
+    private func taskProgressSummary(for item: ScheduledBlock) -> String {
+        let total = item.block.actions.count
+        let completed = item.block.actions.filter { $0.completedDates.contains(item.dateKey) }.count
+        return "\(completed) of \(total) done"
     }
 
     private func systemStatus(for item: ScheduledBlock, completed: Bool) -> SystemBlockStatus {

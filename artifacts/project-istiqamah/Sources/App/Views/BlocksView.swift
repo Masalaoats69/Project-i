@@ -5,37 +5,19 @@ struct BlocksView: View {
     @State private var draft: FocusBlock?
     @State private var editMode: EditMode = .inactive
     @State private var restoreError: String?
+    @State private var showingBlockGuide = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     ForEach(store.activeBlocks) { block in
-                        HStack(spacing: 14) {
-                            Image(systemName: "clock")
-                                .foregroundStyle(AppTheme.primary)
-                                .frame(width: 34, height: 34)
-                                .background(AppTheme.elevatedSurface)
-                                .clipShape(Circle())
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(block.name)
-                                    .font(.headline)
-                                    .foregroundStyle(AppTheme.primaryText)
-                                Text("\(block.startTime) – \(block.endTime) · \(block.actions.count) actions")
-                                    .font(.caption)
-                                    .foregroundStyle(AppTheme.secondaryText)
-                                Text(weekdaySummary(block.weekdays))
-                                    .font(.caption2)
-                                    .foregroundStyle(AppTheme.primary)
-                            }
-                            Spacer()
-                        }
-                        .padding(.vertical, 6)
+                        blockCard(block)
                         .contentShape(Rectangle())
                         .onTapGesture { draft = block }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAction { draft = block }
-                        .accessibilityHint("Double-tap to edit. Use Reorder to move this block into another time slot.")
+                        .accessibilityHint("Double-tap to edit this important time block. Use Reorder to move it into another time slot.")
                         .listRowBackground(AppTheme.surface)
                         .swipeActions {
                             Button { store.archive(block) } label: {
@@ -90,10 +72,18 @@ struct BlocksView: View {
             .tint(AppTheme.primary)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(editMode.isEditing ? "Done" : "Reorder") {
-                        withAnimation(.snappy) {
-                            editMode = editMode.isEditing ? .inactive : .active
+                    HStack {
+                        Button(editMode.isEditing ? "Done" : "Reorder") {
+                            withAnimation(.snappy) {
+                                editMode = editMode.isEditing ? .inactive : .active
+                            }
                         }
+                        Button {
+                            showingBlockGuide = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                        }
+                        .accessibilityLabel("About blocks and important tasks")
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -112,6 +102,9 @@ struct BlocksView: View {
                     }
                     draft = nil
                 }
+            }
+            .sheet(isPresented: $showingBlockGuide) {
+                BlockGuideView()
             }
             .alert("Could not restore block", isPresented: Binding(
                 get: { restoreError != nil },
@@ -134,9 +127,98 @@ struct BlocksView: View {
         store.swapBlockTimeSlots(activeBlocks[sourceIndex].id, with: activeBlocks[targetIndex].id)
     }
 
+    private func blockCard(_ block: FocusBlock) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "clock.fill")
+                    .foregroundStyle(AppTheme.primary)
+                    .frame(width: 38, height: 38)
+                    .background(AppTheme.elevatedSurface)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(block.name)
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.primaryText)
+                    Label("\(block.startTime) – \(block.endTime)", systemImage: "calendar")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppTheme.tertiaryText)
+                    .padding(.top, 4)
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "repeat")
+                Text(weekdaySummary(block.weekdays))
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(AppTheme.primary)
+
+            HStack(spacing: 6) {
+                Image(systemName: block.actions.isEmpty ? "circle.dashed" : "checklist")
+                Text(taskSummary(for: block))
+            }
+            .font(.caption)
+            .foregroundStyle(AppTheme.secondaryText)
+        }
+        .padding(.vertical, 10)
+    }
+
+    private func taskSummary(for block: FocusBlock) -> String {
+        switch block.actions.count {
+        case 0: "No important tasks added"
+        case 1: "1 important task"
+        default: "\(block.actions.count) important tasks"
+        }
+    }
+
     private func weekdaySummary(_ weekdays: Set<Int>) -> String {
         if weekdays == FocusBlock.everyDay { return "Every day" }
         return weekdays.sorted().map { DateTools.weekdayName($0) }.joined(separator: " · ")
+    }
+}
+
+private struct BlockGuideView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 38))
+                        .foregroundStyle(AppTheme.primary)
+                    Text("What is a Block?")
+                        .font(.title2.weight(.semibold))
+                    Text("A Block protects time for work that matters. Create one for a repeated commitment like Deep Work, study, exercise, or your morning routine.")
+                        .foregroundStyle(AppTheme.secondaryText)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Set the days and time you want to protect.", systemImage: "clock")
+                        Label("Add a short note to clarify the focus.", systemImage: "text.alignleft")
+                        Label("Add important tasks only when they help you focus. They are optional, and a Block can still be complete without every task being checked.", systemImage: "checklist")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.primaryText)
+                    Text("This app is for consistent, intentional time—not for every small errand.")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(AppTheme.primary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
+            }
+            .background(AppTheme.background)
+            .navigationTitle("About Blocks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 
