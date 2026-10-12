@@ -17,8 +17,8 @@ The native application lives in [`artifacts/project-istiqamah`](artifacts/projec
 - **Widgets and Live Activities:** block names and intention notes with seven
   subtle palettes. A block keeps its color across refreshes and restarts. Write
   an intention in its note, for example “Start the day before the noise.”
-- **Identity:** the original sculpted green `i` and glass icon, refined with subtle
-  color and edge adjustments; widgets retain the matching SwiftUI silhouette.
+- **Identity:** the original sculpted green `i`, refined with subtle color and edge
+  adjustments with reflective glass depth on a background that fills the icon; widgets retain the matching SwiftUI silhouette.
 - **Backups:** version 5 preserves schedule history and accepts versions 1–4.
 
 These changes are implemented in source. A signed iPhone build is still needed
@@ -131,10 +131,11 @@ identity when updating to retain local data; export before reinstalling.
 
 ## App logo
 
-<img src="artifacts/project-istiqamah/assets/images/icon.png" width="160" alt="Istiqamah: sculpted green i on a soft glass background">
+<img src="artifacts/project-istiqamah/assets/images/icon.png" width="160" alt="Istiqamah: sculpted green i on an edge-to-edge reflective glass background">
 
-The original icon keeps its sculpted shape and glass treatment, with a subtle
-contrast, color, and sharpness enhancement. Widgets use its native SwiftUI silhouette. See the [design system](artifacts/project-istiqamah/DESIGN_SYSTEM.md)
+The original logo keeps its sculpted shape, with subtle contrast, color, and
+sharpness enhancements. Soft reflections, a luminous lip, and diffused depth give the glass finish;
+the background fills the square without an inset rim. Widgets use its native SwiftUI silhouette. See the [design system](artifacts/project-istiqamah/DESIGN_SYSTEM.md)
 for regeneration instructions. The [Live Activity guide](artifacts/project-istiqamah/DYNAMIC_ISLAND_README.md)
 explains the widget surfaces and color behavior.
 

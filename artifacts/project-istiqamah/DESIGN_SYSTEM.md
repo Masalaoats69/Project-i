@@ -44,13 +44,18 @@ hex value. Light and dark variants resolve automatically from the system appeara
 ## App icon and widget mark
 
 The original identity is a sculpted green lowercase `i` with a flowing mint
-sweep, a soft glass surround, and gentle highlights. The enhanced version keeps
-the composition and silhouette intact. A feathered green-chroma mask applies
+sweep and gentle highlights. The enhanced version keeps the logo silhouette
+intact on a reflective silver background that fills the square. A feathered green-chroma mask applies
 10% more saturation and 6% more contrast to the green artwork, followed by a
-restrained sharpening pass. The neutral glass stays close to the original.
+restrained sharpening pass. A green-chroma mask isolates the sculpture from the
+original inset tile. Broad reflected light replaces the inset tile background. A faint specular
+reflection, luminous lip, and diffused shadow give the green sculpture glass
+depth. There is no inset tile rim or tiny outer gap. This is rendered PNG
+artwork; it does not add a system-responsive Liquid Glass material or claim an
+official iOS 27 treatment.
 
-`assets/images/icon.png` remains a square, opaque 1024 × 1024 RGB PNG. The glass
-rim belongs to the original artwork; iOS applies its own outer icon mask.
+`assets/images/icon.png` remains a square, opaque 1024 × 1024 RGB PNG. There is no
+baked-in outer rim or rounded tile; iOS applies its own outer icon mask.
 `Sources/Widgets/IstiqamahMark.swift` preserves the original native SwiftUI
 silhouette with configurable `primary` and `secondary` colors.
 
