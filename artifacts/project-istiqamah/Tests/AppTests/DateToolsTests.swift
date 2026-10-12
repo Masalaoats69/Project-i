@@ -304,4 +304,37 @@ final class DateToolsTests: XCTestCase {
 
         XCTAssertThrowsError(try AppStore.validateBackup(snapshot))
     }
+
+    func testWidgetBlockIntentionRoundTripsAndLegacySnapshotStillDecodes() throws {
+        let block = WidgetBlockSummary(
+            id: UUID(), name: "Fajr Block", dateKey: "2026-10-12",
+            startDate: Date(timeIntervalSince1970: 100), endDate: Date(timeIntervalSince1970: 200),
+            isPaused: false, intention: "Start the day before the noise."
+        )
+        let data = try JSONEncoder().encode(block)
+        XCTAssertEqual(try JSONDecoder().decode(WidgetBlockSummary.self, from: data).intention, block.intention)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        legacy.removeValue(forKey: "intention")
+        let restored = try JSONDecoder().decode(WidgetBlockSummary.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertNil(restored.intention)
+        XCTAssertEqual(restored.name, block.name)
+        XCTAssertEqual(restored.id, block.id)
+    }
+
+    func testLiveActivityIntentionRoundTripsAndOlderStateStillDecodes() throws {
+        let state = BlockActivityAttributes.ContentState(
+            blockName: "Fajr Block", startDate: Date(timeIntervalSince1970: 100),
+            endDate: Date(timeIntervalSince1970: 200), timeLabel: "05:00 – 06:30", pausedAt: nil,
+            intention: "Start the day before the noise."
+        )
+        let data = try JSONEncoder().encode(state)
+        XCTAssertEqual(try JSONDecoder().decode(BlockActivityAttributes.ContentState.self, from: data).intention, state.intention)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        legacy.removeValue(forKey: "intention")
+        let restored = try JSONDecoder().decode(BlockActivityAttributes.ContentState.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertNil(restored.intention)
+        XCTAssertEqual(restored.blockName, state.blockName)
+        XCTAssertEqual(restored.endDate, state.endDate)
+    }
+
 }

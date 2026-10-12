@@ -8,6 +8,8 @@ struct BlockActivityAttributes: ActivityAttributes {
         let endDate: Date
         let timeLabel: String
         let pausedAt: Date?
+        // Optional for compatibility with activities created by earlier versions.
+        var intention: String? = nil
 
         var isPaused: Bool { pausedAt != nil }
     }

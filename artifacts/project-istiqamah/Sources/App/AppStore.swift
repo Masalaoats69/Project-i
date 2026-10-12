@@ -553,7 +553,8 @@ final class AppStore: ObservableObject {
             dateKey: item.dateKey,
             startDate: item.start,
             endDate: item.end,
-            isPaused: pausedBlocks[item.id] != nil
+            isPaused: pausedBlocks[item.id] != nil,
+            intention: String(item.block.note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))
         )
     }
 

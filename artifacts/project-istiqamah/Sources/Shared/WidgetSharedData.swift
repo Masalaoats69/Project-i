@@ -7,6 +7,8 @@ struct WidgetBlockSummary: Codable, Hashable, Sendable {
     let startDate: Date
     let endDate: Date
     let isPaused: Bool
+    // Older shared snapshots have no intention field.
+    var intention: String? = nil
 
     var deepLink: URL? {
         var components = URLComponents()
@@ -52,7 +54,8 @@ struct IstiqamahWidgetSnapshot: Codable, Hashable, Sendable {
             dateKey: "2026-09-21",
             startDate: Date().addingTimeInterval(-20 * 60),
             endDate: Date().addingTimeInterval(40 * 60),
-            isPaused: false
+            isPaused: false,
+            intention: "Make space for what matters."
         ),
         nextBlock: WidgetBlockSummary(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000002") ?? UUID(),

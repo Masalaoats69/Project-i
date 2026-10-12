@@ -525,11 +525,14 @@ private struct FocusWidgetView: View {
                 .frame(width: 28, height: 28)
                 .widgetAccentable()
             VStack(alignment: .leading, spacing: 2) {
-                Text(runningBlock == nil ? "UP NEXT" : "FOCUS NOW")
-                    .font(.system(size: 9, weight: .bold))
                 Text(displayBlock?.name ?? "Plan your next block")
                     .font(.headline)
                     .lineLimit(1)
+                if let intention {
+                    Text(intention)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
                 compactTiming
                     .font(.caption2)
             }
@@ -547,7 +550,12 @@ private struct FocusWidgetView: View {
             compactTiming
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(accent)
-            if entry.configuration.showPersonalMessage {
+            if let intention {
+                Text(intention)
+                    .font(.caption)
+                    .foregroundStyle(secondaryText)
+                    .lineLimit(2)
+            } else if entry.configuration.showPersonalMessage {
                 Text(personalMessage)
                     .font(.caption2)
                     .foregroundStyle(secondaryText)
@@ -575,7 +583,12 @@ private struct FocusWidgetView: View {
             Divider().overlay(border)
 
             VStack(alignment: .leading, spacing: 8) {
-                if entry.configuration.showPersonalMessage {
+                if let intention {
+                    Text(intention)
+                        .font(.subheadline)
+                        .foregroundStyle(primaryText)
+                        .lineLimit(3)
+                } else if entry.configuration.showPersonalMessage {
                     Text(personalMessage)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(primaryText)
@@ -629,6 +642,11 @@ private struct FocusWidgetView: View {
         return "Open Project Istiqamah to plan"
     }
 
+    private var intention: String? {
+        let text = (displayBlock?.intention ?? "").split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        return text.isEmpty ? nil : text
+    }
+
     private var personalMessage: String {
         let trimmed = entry.snapshot.personalMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "Keep showing up." : trimmed
@@ -643,9 +661,7 @@ private struct FocusWidgetView: View {
     }
 
     private var background: Color {
-        colorScheme == .dark
-            ? Color(red: 0.05, green: 0.07, blue: 0.06)
-            : Color(red: 0.97, green: 0.98, blue: 0.96)
+        BlockWidgetPalette.background(for: displayBlock?.id, dark: colorScheme == .dark)
     }
 
     private var surface: Color {
@@ -667,16 +683,10 @@ private struct FocusWidgetView: View {
     }
 
     private var accent: Color {
-        colorScheme == .dark
-            ? Color(red: 0.56, green: 0.83, blue: 0.72)
-            : Color(red: 0.21, green: 0.42, blue: 0.36)
+        BlockWidgetPalette.accent(for: displayBlock?.id, dark: colorScheme == .dark)
     }
 
-    private var mint: Color {
-        colorScheme == .dark
-            ? Color(red: 0.66, green: 0.89, blue: 0.79)
-            : Color(red: 0.66, green: 0.84, blue: 0.76)
-    }
+    private var mint: Color { accent.opacity(0.65) }
 
     private var border: Color {
         colorScheme == .dark

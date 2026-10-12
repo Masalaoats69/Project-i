@@ -5,16 +5,14 @@ import SwiftUI
 import WidgetKit
 
 struct BlockLiveActivityWidget: Widget {
-    private let accent = Color(red: 0.56, green: 0.83, blue: 0.72)
     private let timerAccent = Color(red: 0.95, green: 0.96, blue: 0.95)
-    private let activityBackground = Color(red: 0.05, green: 0.07, blue: 0.06)
     private let secondaryText = Color(red: 0.62, green: 0.67, blue: 0.65)
     private let divider = Color(red: 0.13, green: 0.16, blue: 0.15)
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BlockActivityAttributes.self) { context in
             lockScreen(context)
-                .activityBackgroundTint(activityBackground)
+                .activityBackgroundTint(BlockWidgetPalette.background(for: context.attributes.blockID, dark: true))
                 .activitySystemActionForegroundColor(timerAccent)
                 .widgetURL(context.attributes.deepLink)
         } dynamicIsland: { context in
@@ -33,11 +31,14 @@ struct BlockLiveActivityWidget: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    metricGrid(context)
-                        .padding(.top, 12)
+                    VStack(alignment: .leading, spacing: 8) {
+                        blockIdentity(context)
+                        metricGrid(context)
+                    }
+                    .padding(.top, 8)
                 }
             } compactLeading: {
-                IstiqamahMark()
+                IstiqamahMark(primary: accent(context), secondary: accent(context).opacity(0.65))
                     .frame(width: 16, height: 16)
                     .accessibilityLabel("\(blockTitle(context)), \(statusLabel(context))")
             } compactTrailing: {
@@ -49,16 +50,17 @@ struct BlockLiveActivityWidget: Widget {
                 minimalContent(context)
             }
             .widgetURL(context.attributes.deepLink)
-            .keylineTint(accent)
+            .keylineTint(accent(context))
             .contentMargins(.horizontal, 20, for: .expanded)
             .contentMargins(.bottom, 20, for: .expanded)
         }
     }
 
     private func lockScreen(_ context: ActivityViewContext<BlockActivityAttributes>) -> some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+            blockIdentity(context)
             HStack(alignment: .center, spacing: 12) {
-                IstiqamahMark()
+                IstiqamahMark(primary: accent(context), secondary: accent(context).opacity(0.65))
                     .frame(width: 30, height: 30)
                 Spacer(minLength: 8)
                 countdown(context)
@@ -76,9 +78,32 @@ struct BlockLiveActivityWidget: Widget {
 
             metricGrid(context)
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(blockTitle(context))
+    }
+
+    private func accent(_ context: ActivityViewContext<BlockActivityAttributes>) -> Color {
+        BlockWidgetPalette.accent(for: context.attributes.blockID, dark: true)
+    }
+
+    private func blockIdentity(_ context: ActivityViewContext<BlockActivityAttributes>) -> some View {
+        let intention = (context.state.intention ?? "").split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(context.state.blockName)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(accent(context))
+                .lineLimit(1)
+            if !intention.isEmpty {
+                Text(intention)
+                    .font(.caption)
+                    .foregroundStyle(timerAccent.opacity(0.8))
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private func activityActions(_ context: ActivityViewContext<BlockActivityAttributes>) -> some View {
@@ -103,11 +128,11 @@ struct BlockLiveActivityWidget: Widget {
                 )) {
                     Image(systemName: context.state.isPaused ? "play.fill" : "pause.fill")
                         .font(.system(size: buttonSize * 0.36, weight: .bold))
-                        .foregroundStyle(activityBackground)
+                        .foregroundStyle(accent(context))
                         .frame(width: buttonSize, height: buttonSize)
-                        .background(Circle().fill(accent.opacity(0.30)))
+                        .background(Circle().fill(accent(context).opacity(0.30)))
                         .overlay {
-                            Circle().stroke(accent.opacity(0.45))
+                            Circle().stroke(accent(context).opacity(0.45))
                         }
                 }
                 .buttonStyle(.plain)
@@ -153,7 +178,7 @@ struct BlockLiveActivityWidget: Widget {
 
     @ViewBuilder
     private func minimalContent(_ context: ActivityViewContext<BlockActivityAttributes>) -> some View {
-        IstiqamahMark()
+        IstiqamahMark(primary: accent(context), secondary: accent(context).opacity(0.65))
             .frame(width: 16, height: 16)
             .accessibilityLabel("\(blockTitle(context)), \(statusLabel(context))")
     }
@@ -258,7 +283,8 @@ private let previewState = BlockActivityAttributes.ContentState(
     startDate: Date().addingTimeInterval(-20 * 60),
     endDate: Date().addingTimeInterval(40 * 60),
     timeLabel: "09:00 – 10:00",
-    pausedAt: nil
+    pausedAt: nil,
+    intention: "Start the day before the noise."
 )
 
 private let previewLongState = BlockActivityAttributes.ContentState(
