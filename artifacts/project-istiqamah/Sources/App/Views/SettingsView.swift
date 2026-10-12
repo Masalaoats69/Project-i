@@ -106,6 +106,7 @@ struct SettingsView: View {
                         axis: .vertical
                     )
                     .lineLimit(2...4)
+                    .accessibilityIdentifier("settings.widgetReminder")
                     Text("\(store.preferences.widgetMessage.count)/100 characters")
                         .font(.caption)
                         .foregroundStyle(AppTheme.secondaryText)
@@ -118,6 +119,7 @@ struct SettingsView: View {
                         axis: .vertical
                     )
                     .lineLimit(2...4)
+                    .accessibilityIdentifier("settings.plainWidgetText")
                     Text("\(store.preferences.plainWidgetText.count)/100 characters · only this widget uses this text")
                         .font(.caption)
                         .foregroundStyle(AppTheme.secondaryText)
@@ -166,6 +168,7 @@ struct SettingsView: View {
                         .foregroundStyle(AppTheme.secondaryText)
                 }
             }
+            .keyboardDismissal()
             .scrollContentBackground(.hidden)
             .background(AppTheme.background)
             .navigationTitle("Settings")

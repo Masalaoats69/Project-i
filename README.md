@@ -13,7 +13,7 @@ The native application lives in [`artifacts/project-istiqamah`](artifacts/projec
 - BackgroundTasks refresh for best-effort system wakeups
 - Codable JSON persistence in Application Support
 - UserNotifications reminders, start alerts, and completion alerts
-- Charts-based seven-day progress dashboard
+- Charts-based 7/30-day progress dashboard
 - XcodeGen project definition committed as `project.json`
 - No Expo, React Native, JavaScript bundle, CocoaPods, account, or backend
 
@@ -22,10 +22,10 @@ The native application lives in [`artifacts/project-istiqamah`](artifacts/projec
 | Area | Implemented behavior |
 | --- | --- |
 | App navigation | Native SwiftUI tabs for Today, Blocks, Progress, and Settings |
-| Block planning | Create and edit weekday schedules with native time pickers, use Reorder mode to swap complete schedule slots, and archive or restore blocks without losing completion history |
+| Block planning | Create and edit weekday schedules with native time pickers, confirm schedule swaps with an Undo option, and archive or restore blocks without losing completion history |
 | Daily view | Previous/next-day navigation, return to today, a running block with live actions or the next upcoming block, and a Start a block shortcut when nothing remains scheduled |
 | Completion | Mark blocks and individual actions complete after their start time; Today's System shows date-specific Done/Undone action status |
-| Progress | Weekday-aware seven-day chart, completed-block total, practiced-day count, consistency percentage, current streak, and active or archived per-block totals |
+| Progress | 7/30-day planned-versus-completed chart, selectable daily details, dated schedule history, practiced-day count, rest-day-aware streak, and period-specific active or archived block totals |
 | Reminders | Time-sensitive alerts before a block, when it starts, and when it ends; start alerts offer I Know and configurable 5/10/15-minute Snooze actions, and dismissing one snoozes it |
 | Reminder sounds | System notification, iOS 26 system ringtone, three bundled tones, and a user-imported audio clip up to 30 seconds converted to notification-safe CAF audio |
 | Live Activities | Starts or updates the current block, removes completed or outdated activities, schedules upcoming starts on iOS 26, and provides status, refresh, and restart controls in Settings |
@@ -35,9 +35,10 @@ The native application lives in [`artifacts/project-istiqamah`](artifacts/projec
 | Widgets | Focus, Consistency, Reminder, Lock Screen-only Pulse, and a plain-text-only Home/Lock Screen widget with its own independent 100-character field in Settings; Reminder and Pulse accept text overrides in Edit Widget |
 | Deep links | Notification and Live Activity taps open the Today tab on the relevant date and block; an ended-block link can record completion |
 | Local data | Codable JSON persistence in Application Support, visible save/recovery failures, preservation of unreadable data, and exclusion of private app data from device/iCloud backup |
+| Text editing | Tap outside a text field, swipe the form, or use the keyboard’s Done button to dismiss it in the block editor and Settings |
 | Preferences | Reminder toggle, early-reminder and snooze timing, bundled/system/imported sound choice, widget message, haptic toggle, notification permission status, and shortcut to iOS Settings |
 | Backup | Pretty-printed JSON export and validated, size-bounded restore through native share and file-import sheets |
-| Verification | XCTest coverage for schedules, migration, archives, and backup validation; UI navigation/reorder smoke test; Lock Screen and compact/expanded Dynamic Island preview fixtures |
+| Verification | XCTest coverage for schedules, migration, archives, and backup validation; UI navigation/swap and keyboard-dismissal checks, progress history and migration regression tests; Lock Screen and compact/expanded Dynamic Island preview fixtures |
 | CI package | Manual or version-tag GitHub Action builds the app and embedded Live Activity extension into an unsigned IPA |
 
 The code and project configuration for these behaviors are present. The JSON
@@ -73,6 +74,23 @@ xcodebuild test \
   -scheme ProjectIstiqamah \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
+
+## Progress history
+
+Schedule changes and archive/restore events are saved by date. Changes apply to
+today and future days; earlier plans stay intact. A block created today never
+counts as a missed block before it existed. Completions remain visible even if
+the block is later archived or its weekdays change.
+
+Older installations and backups did not record dated plans. On migration, their
+completions are kept and schedule tracking begins today. Earlier dates appear as
+“plan not recorded” and are excluded from completion rates. New backups use
+version 5; this app still accepts versions 1–4. Export a backup before updating;
+version 5 backups cannot be imported into older app versions.
+
+The current streak counts days with at least one completed block. Known rest days
+preserve the streak without increasing it; a missed scheduled day breaks it.
+Today remains open until midnight. Dashboard and widget snapshots share this rule.
 
 ## Unsigned IPA
 

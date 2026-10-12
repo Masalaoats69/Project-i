@@ -138,6 +138,37 @@ enum DateTools {
             .min()
     }
 
+    static func displayTime(_ time: String) -> String {
+        // A fixed day avoids daylight-saving transitions affecting display-only times.
+        let calendar = Calendar.current
+        guard let minutes = minutes(time),
+              let date = calendar.date(from: DateComponents(year: 2001, month: 1, day: 15, hour: minutes / 60, minute: minutes % 60)) else { return time }
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
+    static func timeRange(for block: FocusBlock) -> String {
+        "\(displayTime(block.startTime)) – \(displayTime(block.endTime))"
+    }
+
+    static func durationLabel(for block: FocusBlock) -> String {
+        guard let start = minutes(block.startTime), let end = minutes(block.endTime) else { return "Choose a time" }
+        let duration = end > start ? end - start : end + 1_440 - start
+        let hours = duration / 60
+        let remaining = duration % 60
+        let length = hours == 0 ? "\(remaining) min" : (remaining == 0 ? "\(hours) hr" : "\(hours) hr \(remaining) min")
+        return end <= start ? "\(length) · Ends tomorrow" : length
+    }
+
+    static func weekdaySummary(_ weekdays: Set<Int>) -> String {
+        if weekdays == FocusBlock.everyDay { return "Every day" }
+        if weekdays == Set([2, 3, 4, 5, 6]) { return "Weekdays" }
+        if weekdays == Set([1, 7]) { return "Weekends" }
+        let first = Calendar.current.firstWeekday
+        return (0..<7).map { (first - 1 + $0) % 7 + 1 }
+            .filter { weekdays.contains($0) }
+            .map { weekdayName($0) }.joined(separator: " · ")
+    }
+
     static func clock(seconds: TimeInterval) -> String {
         let safe = max(0, Int(seconds))
         let hours = safe / 3_600

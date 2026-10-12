@@ -60,7 +60,7 @@ struct TodayView: View {
                     } label: {
                         Image(systemName: "info.circle")
                     }
-                    .accessibilityLabel("About blocks and important tasks")
+                    .accessibilityLabel("About blocks and actions")
                 }
             }
             .sheet(isPresented: $showingBlockGuide) {
@@ -162,8 +162,8 @@ struct TodayView: View {
                 .tint(AppTheme.primary)
             HStack {
                 Text(pausedAt == nil
-                    ? "\(item.block.startTime) – \(item.block.endTime)"
-                    : "Paused · slot ends at \(item.block.endTime)"
+                    ? DateTools.timeRange(for: item.block)
+                    : "Paused · slot ends at \(DateTools.displayTime(item.block.endTime))"
                 )
                     .foregroundStyle(AppTheme.secondaryText)
                 Spacer()
@@ -193,9 +193,9 @@ struct TodayView: View {
         if !item.block.actions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("IMPORTANT TASKS")
+                    Text("ACTIONS")
                     Spacer()
-                    Text(taskProgressSummary(for: item))
+                    Text(actionProgressSummary(for: item))
                         .foregroundStyle(AppTheme.primary)
                 }
                     .font(.caption2.bold())
@@ -271,7 +271,7 @@ struct TodayView: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(AppTheme.primaryText)
                         .lineLimit(1)
-                    Label("\(item.block.startTime) – \(item.block.endTime)", systemImage: "clock")
+                    Label(DateTools.timeRange(for: item.block), systemImage: "clock")
                         .font(.caption)
                         .foregroundStyle(AppTheme.secondaryText)
                 }
@@ -287,15 +287,10 @@ struct TodayView: View {
                     .clipShape(Capsule())
             }
 
-            if item.block.actions.isEmpty {
-                Text("No important tasks added")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.tertiaryText)
-                    .padding(.leading, 54)
-            } else {
+            if !item.block.actions.isEmpty {
                 HStack(spacing: 6) {
                     Image(systemName: "checklist")
-                    Text(taskProgressSummary(for: item))
+                    Text(actionProgressSummary(for: item))
                 }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(AppTheme.secondaryText)
@@ -334,7 +329,7 @@ struct TodayView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(completed ? AppTheme.completed : AppTheme.primaryText)
                     .padding(.horizontal, 11)
-                    .frame(minHeight: 36)
+                    .frame(minHeight: 44)
                     .background(completed ? AppTheme.completed.opacity(0.14) : AppTheme.elevatedSurface)
                     .clipShape(Capsule())
                     .overlay {
@@ -354,7 +349,7 @@ struct TodayView: View {
         .frame(minHeight: 44)
     }
 
-    private func taskProgressSummary(for item: ScheduledBlock) -> String {
+    private func actionProgressSummary(for item: ScheduledBlock) -> String {
         let total = item.block.actions.count
         let completed = item.block.actions.filter { $0.completedDates.contains(item.dateKey) }.count
         return "\(completed) of \(total) done"
