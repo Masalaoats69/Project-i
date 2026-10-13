@@ -53,7 +53,7 @@ final class AppStore: ObservableObject {
                 blocks = snapshot.blocks
                 preferences = snapshot.preferences
                 pausedBlocks = snapshot.pausedBlocks ?? [:]
-                needsInitialPersist = false
+                needsInitialPersist = snapshot.version < 5
             } catch {
                 blocks = Self.seedBlocks
                 preferences = AppPreferences()
@@ -85,13 +85,30 @@ final class AppStore: ObservableObject {
     }
 
     func add(_ block: FocusBlock) {
-        blocks.append(block)
+        var saved = block
+        // A draft may have been opened on a previous day.
+        saved.scheduleHistory = [BlockScheduleRevision(
+            effectiveDate: DateTools.key(Date()), weekdays: saved.weekdays, isArchived: false
+        )]
+        saved.hasCompleteScheduleHistory = true
+        blocks.append(saved)
         changed()
     }
 
     func update(_ block: FocusBlock) {
         guard let index = blocks.firstIndex(where: { $0.id == block.id }) else { return }
-        blocks[index] = block
+        var saved = block
+        // The sheet owns a draft; keep any completion changes received while it was open.
+        saved.completedDates = blocks[index].completedDates
+        for actionIndex in saved.actions.indices {
+            if let current = blocks[index].actions.first(where: { $0.id == saved.actions[actionIndex].id }) {
+                saved.actions[actionIndex].completedDates = current.completedDates
+            }
+        }
+        saved.scheduleHistory = blocks[index].scheduleHistory
+        saved.hasCompleteScheduleHistory = blocks[index].hasCompleteScheduleHistory
+        saved.recordScheduleChange()
+        blocks[index] = saved
         changed()
     }
 
@@ -103,6 +120,7 @@ final class AppStore: ObservableObject {
         guard let index = blocks.firstIndex(where: { $0.id == block.id }),
               blocks[index].archivedAt == nil else { return }
         blocks[index].archivedAt = Date()
+        blocks[index].recordScheduleChange()
         pausedBlocks = pausedBlocks.filter { !$0.key.hasPrefix("\(block.id.uuidString):") }
         if requestedBlockID == block.id {
             requestedBlockID = nil
@@ -120,6 +138,7 @@ final class AppStore: ObservableObject {
             return "This schedule overlaps \(conflict.name). Edit a time slot before restoring."
         }
         blocks[index].archivedAt = nil
+        blocks[index].recordScheduleChange()
         changed()
         return nil
     }
@@ -137,6 +156,8 @@ final class AppStore: ObservableObject {
         blocks[targetIndex].startTime = sourceStart
         blocks[targetIndex].endTime = sourceEnd
         blocks[targetIndex].weekdays = sourceWeekdays
+        blocks[sourceIndex].recordScheduleChange()
+        blocks[targetIndex].recordScheduleChange()
         blocks.swapAt(sourceIndex, targetIndex)
         changed()
     }
@@ -243,7 +264,7 @@ final class AppStore: ObservableObject {
 
     func exportBackup() throws -> URL {
         let snapshot = AppSnapshot(
-            version: 4,
+            version: 5,
             exportedAt: Date(),
             blocks: blocks,
             preferences: preferences,
@@ -474,7 +495,7 @@ final class AppStore: ObservableObject {
 
     private func persist() {
         let snapshot = AppSnapshot(
-            version: 4,
+            version: 5,
             exportedAt: Date(),
             blocks: blocks,
             preferences: preferences,
@@ -532,26 +553,17 @@ final class AppStore: ObservableObject {
             dateKey: item.dateKey,
             startDate: item.start,
             endDate: item.end,
-            isPaused: pausedBlocks[item.id] != nil
+            isPaused: pausedBlocks[item.id] != nil,
+            intention: String(item.block.note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))
         )
     }
 
     private func currentStreak(at now: Date) -> Int {
-        let completedDates = Set(blocks.flatMap(\.completedDates))
-        var date = now
-        var streak = 0
-        while completedDates.contains(DateTools.key(date)) {
-            streak += 1
-            guard let previous = Calendar.current.date(byAdding: .day, value: -1, to: date) else {
-                break
-            }
-            date = previous
-        }
-        return streak
+        ProgressMetrics.streak(in: blocks, at: now)
     }
 
     static func validateBackup(_ snapshot: AppSnapshot) throws {
-        guard (1...4).contains(snapshot.version) else {
+        guard (1...5).contains(snapshot.version) else {
             throw BackupImportError.unsupportedVersion(snapshot.version)
         }
         guard snapshot.blocks.count <= 500 else {
@@ -576,6 +588,9 @@ final class AppStore: ObservableObject {
         }
 
         for block in snapshot.blocks {
+            guard block.hasValidScheduleHistory else {
+                throw BackupImportError.invalid("A block contains invalid schedule history.")
+            }
             guard !block.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   DateTools.isValid(time: block.startTime),
                   DateTools.isValid(time: block.endTime),

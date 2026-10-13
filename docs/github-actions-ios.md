@@ -5,7 +5,16 @@ on an available iPhone simulator and creates an unsigned, device-targeted IPA
 on a GitHub-hosted macOS runner. It does not need Apple Developer credentials
 or repository secrets.
 
-## Run it
+## Build-only option
+
+The separately supplied `build-ios-ipa.yml.txt` replacement is named **Build and
+release SideStore IPA**. It runs only manually or on version tags, packages the
+IPA, and publishes tagged releases. It removes the simulator test job and
+pull-request/main-push triggers. Apply that text manually if you want this
+behavior; the workflow checked into this repository is still the test-and-release
+version described below. Test sources remain available for local Xcode use.
+
+## Run the tracked workflow
 
 1. Open the repository's **Actions** tab.
 2. Select **Test and release iOS IPA**.
@@ -25,7 +34,8 @@ test fails.
 
 For manual and version-tag runs, the package job builds the SwiftUI app and
 ActivityKit widget extension for the physical-device SDK with code signing
-disabled. It then places the app inside `Payload/`, creates
+disabled, then ad-hoc signs the extension and app with their entitlements.
+This is packaging validation, not Apple provisioning. It then places the app inside `Payload/`, creates
 `ProjectIstiqamah-SideStore.ipa`, verifies the native Live Activity extension
 is embedded, checks the archive, and uploads it for 14 days. A version-tag run
 also attaches that IPA to the corresponding GitHub Release. Expo, React Native,
@@ -33,11 +43,20 @@ Node.js, and CocoaPods are not part of this build.
 
 ## Installing it
 
-An unsigned IPA cannot be installed directly by tapping it. A sideloading tool
-must sign it with an Apple ID or certificate before iOS will install it. The
+The packaged IPA cannot be installed directly by tapping it. SideStore is the
+default route: import the IPA and let SideStore re-sign it with your Apple ID.
+No paid Developer membership or TestFlight is needed for this route. Follow
+SideStore’s current setup and renewal instructions. The
 workflow intentionally does not store or use signing credentials.
 
 The app uses the bundle identifier `com.projectistiqamah.app`. If a signing tool
 requires a different identifier, configure that in the signing tool or update
 `PRODUCT_BUNDLE_IDENTIFIER` in `artifacts/project-istiqamah/project.json` before
 building.
+
+
+Before distributing a build, check installation/update through SideStore,
+App Group data sharing with the extension, notification permissions, running and
+paused Live Activities, keyboard dismissal, and backup export/restore on a real
+iPhone. The existence of the workflow does not establish that the current source
+has passed a native build or these device checks.

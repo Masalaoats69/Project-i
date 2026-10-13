@@ -5,7 +5,7 @@ final class ProjectIstiqamahUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testCoreNavigationAndReorderEntryPoint() {
+    func testCoreNavigationAndSwapEntryPoint() {
         let app = XCUIApplication()
         app.launch()
 
@@ -22,14 +22,36 @@ final class ProjectIstiqamahUITests: XCTestCase {
         XCTAssertTrue(app.datePickers["blockEditor.endTime"].exists)
         app.navigationBars.buttons["Cancel"].tap()
 
-        let reorder = app.navigationBars.buttons["Reorder"]
-        XCTAssertTrue(reorder.waitForExistence(timeout: 2))
-        reorder.tap()
+        let swap = app.navigationBars.buttons["Swap schedules"]
+        XCTAssertTrue(swap.waitForExistence(timeout: 2))
+        swap.tap()
         XCTAssertTrue(app.navigationBars.buttons["Done"].exists)
 
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Blocks reorder mode"
+        screenshot.name = "Blocks swap mode"
         screenshot.lifetime = .keepAlways
         add(screenshot)
     }
+
+    func testBlockEditorDismissesKeyboardWithoutLosingInput() {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["Blocks"].tap()
+        app.navigationBars.buttons["Add block"].tap()
+        let name = app.textFields["blockEditor.name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Quiet practice")
+        XCTAssertTrue(app.keyboards.firstMatch.exists)
+        app.descendants(matching: .any)["blockEditor.duration"].firstMatch.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(name.value as? String, "Quiet practice")
+        name.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        app.buttons["Dismiss keyboard"].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(name.value as? String, "Quiet practice")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+
 }

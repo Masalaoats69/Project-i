@@ -278,7 +278,8 @@ actor LiveActivityManager {
                 startDate: item.start,
                 endDate: item.end,
                 timeLabel: "\(item.block.startTime) – \(item.block.endTime)",
-                pausedAt: pausedAt
+                pausedAt: pausedAt,
+                intention: String(item.block.note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))
             ),
             staleDate: item.end,
             relevanceScore: item.start.timeIntervalSinceReferenceDate

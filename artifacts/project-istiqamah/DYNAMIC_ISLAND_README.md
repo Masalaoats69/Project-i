@@ -1,12 +1,28 @@
 # Dynamic Island and Live Activity Guide
 
-This guide maps the Live Activity implementation so layout changes can stay
-isolated from the rest of the app. The redesign started from the source used by
-successful GitHub Actions run **Build unsigned iOS IPA #14**, commit
-`7d6a38baeda24d53c44d95f26f8a43957526e8c2`, and intentionally replaces that
-build's denser presentation with the clean metric layout documented below.
+This guide describes the current source for the Live Activity and related
+widgets. Native previews and a signed iPhone build are required to verify final
+system sizing, interactions, and transitions; static checks do not validate them.
 
-Run: <https://github.com/MasalaOats/Project-I-V5/actions/runs/35307583613>
+## Block identity and color
+
+The existing timer, buttons, divider, and metrics remain. Lock Screen and expanded
+Dynamic Island presentations now include the block name and its intention (the
+block's saved note). Blank notes take no extra row. The Home Screen Focus widgets
+and rectangular Lock Screen Focus widget also show this note; a note takes
+precedence over the generic personal message where space is limited.
+
+Seven subtle palettes—sage, blue, lavender, rose, peach, sand, and teal—are chosen
+from the block UUID. Random block identities produce varied colors while the
+same block keeps its color across refreshes, restarts, Home Screen, and Live
+Activity. Home Screen accents adapt to light/dark appearance. iOS can override
+colors for tinted or monochrome widget presentation.
+
+`Sources/Widgets/BlockWidgetPalette.swift` owns the colors. The app includes up to
+160 characters of the note in ActivityKit content and the shared widget snapshot;
+older content without this optional field still decodes. Full notes remain in
+the app. The Lock Screen identity uses one line each for name and intention to
+keep the existing controls and metrics visible.
 
 ## How the pieces connect
 
@@ -31,7 +47,7 @@ Pause / Resume / End intents return actions to AppStore
 | File | Responsibility |
 | --- | --- |
 | `Sources/Widgets/BlockLiveActivityWidget.swift` | All Lock Screen and Dynamic Island visuals, sizing, metrics, buttons, and previews |
-| `Sources/Widgets/ProjectIstiqamahWidgets.swift` | Registers the Live Activity plus Focus and Consistency widgets |
+| `Sources/Widgets/ProjectIstiqamahWidgets.swift` | Registers the Live Activity plus Focus, Consistency, Reminder, Pulse, and Plain Text widgets |
 | `Sources/Shared/BlockActivityAttributes.swift` | Defines the block identity, content state, pause state, dates, and deep link |
 | `Sources/Shared/BlockLiveActivityIntents.swift` | Implements Pause/Resume and End button intents |
 | `Sources/App/Services/LiveActivityManager.swift` | Starts, updates, schedules, restarts, and dismisses Live Activities |
@@ -47,13 +63,13 @@ presentations:
 
 | Presentation | Code to edit in `BlockLiveActivityWidget.swift` | Current content |
 | --- | --- | --- |
-| Lock Screen/banner | `lockScreen(_:)` | Clock/pause/checkmark, large timer, circular Pause/Resume and End controls, divider, and metric grid |
+| Lock Screen/banner | `lockScreen(_:)` | Block name/intention, brand mark, large timer, circular Pause/Resume and End controls, divider, and metric grid |
 | Compact leading | `compactLeading` closure | Project Istiqamah's SwiftUI-drawn brand mark |
 | Compact trailing | `compactTrailing` and `compactTimer(_:)` | A live countdown capped at 48 points |
 | Minimal | `minimal` and `minimalContent(_:)` | Icon only; used when iOS is showing multiple Live Activities |
 | Expanded leading | `DynamicIslandExpandedRegion(.leading)` | Circular Pause/Resume and End controls |
-| Expanded trailing | `DynamicIslandExpandedRegion(.trailing)` | Large gold countdown |
-| Expanded bottom | `DynamicIslandExpandedRegion(.bottom)` | Elapsed/duration, start, end, and status metric grid |
+| Expanded trailing | `DynamicIslandExpandedRegion(.trailing)` | Large warm-white countdown |
+| Expanded bottom | `DynamicIslandExpandedRegion(.bottom)` | Block name/intention followed by elapsed/duration, start, end, and status metrics |
 
 iOS chooses compact, minimal, or expanded presentation. Normally one active
 Live Activity uses compact mode. A long press opens expanded mode. The app can
@@ -108,7 +124,7 @@ Edit the three `DynamicIslandExpandedRegion` blocks and the two
 | Countdown | 32-point medium monospaced font in warm white |
 | Pause/Resume and End controls | Two `40 x 40` circular buttons |
 | Bottom metrics | Elapsed/duration, start, end, and status |
-| Outer padding | `16` on all sides |
+| Outer padding | `16` horizontal, `12` vertical |
 
 Edit `lockScreen(_:)` and `activityActions(_:)` for this presentation. These
 changes do not control the compact Dynamic Island.

@@ -6,6 +6,25 @@ break them into small actions, record completion, and review consistency.
 
 The native application lives in [`artifacts/project-istiqamah`](artifacts/project-istiqamah).
 
+## Recent changes
+
+- **Blocks and Actions:** clearer schedule cards, larger weekday controls, archive
+  and restore, and confirmed schedule swaps with Undo.
+- **Progress:** 7/30-day planned-versus-completed charts, daily details, dated
+  schedule history, and a shared rest-day-aware streak calculation.
+- **Text editing:** tap outside, swipe, or use Done to dismiss the keyboard in
+  the block editor and Settings.
+- **Widgets and Live Activities:** block names and intention notes with seven
+  subtle palettes. A block keeps its color across refreshes and restarts. Write
+  an intention in its note, for example “Start the day before the noise.”
+- **Identity:** the original sculpted green `i`, refined with subtle color and edge
+  adjustments with reflective glass depth on a background that fills the icon; widgets retain the matching SwiftUI silhouette.
+- **Backups:** version 5 preserves schedule history and accepts versions 1–4.
+
+These changes are implemented in source. A signed iPhone build is still needed
+for release verification; the Linux development environment cannot run Xcode,
+XCTest, or iOS previews.
+
 ## Native iOS architecture
 
 - SwiftUI application and navigation
@@ -13,7 +32,7 @@ The native application lives in [`artifacts/project-istiqamah`](artifacts/projec
 - BackgroundTasks refresh for best-effort system wakeups
 - Codable JSON persistence in Application Support
 - UserNotifications reminders, start alerts, and completion alerts
-- Charts-based seven-day progress dashboard
+- Charts-based 7/30-day progress dashboard
 - XcodeGen project definition committed as `project.json`
 - No Expo, React Native, JavaScript bundle, CocoaPods, account, or backend
 
@@ -22,23 +41,24 @@ The native application lives in [`artifacts/project-istiqamah`](artifacts/projec
 | Area | Implemented behavior |
 | --- | --- |
 | App navigation | Native SwiftUI tabs for Today, Blocks, Progress, and Settings |
-| Block planning | Create and edit weekday schedules with native time pickers, use Reorder mode to swap complete schedule slots, and archive or restore blocks without losing completion history |
+| Block planning | Create and edit weekday schedules with native time pickers, confirm schedule swaps with an Undo option, and archive or restore blocks without losing completion history |
 | Daily view | Previous/next-day navigation, return to today, a running block with live actions or the next upcoming block, and a Start a block shortcut when nothing remains scheduled |
-| Completion | Mark blocks and individual actions complete after their start time; Today's System shows date-specific Done/Undone action status |
-| Progress | Weekday-aware seven-day chart, completed-block total, practiced-day count, consistency percentage, current streak, and active or archived per-block totals |
+| Completion | Mark blocks and individual actions complete after their start time; Today's Blocks shows date-specific Done/Undone action status |
+| Progress | 7/30-day planned-versus-completed chart, selectable daily details, dated schedule history, practiced-day count, rest-day-aware streak, and period-specific active or archived block totals |
 | Reminders | Time-sensitive alerts before a block, when it starts, and when it ends; start alerts offer I Know and configurable 5/10/15-minute Snooze actions, and dismissing one snoozes it |
 | Reminder sounds | System notification, iOS 26 system ringtone, three bundled tones, and a user-imported audio clip up to 30 seconds converted to notification-safe CAF audio |
 | Live Activities | Starts or updates the current block, removes completed or outdated activities, schedules upcoming starts on iOS 26, and provides status, refresh, and restart controls in Settings |
 | Background refresh | Reloads saved blocks during system-granted background time, refreshes notifications and Live Activities, and schedules the next best-effort wakeup near a block transition |
-| Dynamic Island | Branded compact mark and remaining time; touch-and-hold expanded controls, large timer, and four-column block metrics |
-| Lock Screen | Branded timer header with circular Pause/Resume and End controls, divider, and elapsed/start/end/status metrics |
-| Widgets | Focus, Consistency, Reminder, Lock Screen-only Pulse, and a plain-text-only Home/Lock Screen widget with its own independent 100-character field in Settings; Reminder and Pulse accept text overrides in Edit Widget |
+| Dynamic Island | Branded compact mark and remaining time; touch-and-hold expanded block name/intention, controls, large timer, and four-column block metrics |
+| Lock Screen | Block name and intention note, seven subtle colors assigned consistently per block, branded timer header with circular Pause/Resume and End controls, divider, and elapsed/start/end/status metrics |
+| Widgets | Focus widgets show the block intention with matching colors; Consistency, Reminder, Lock Screen-only Pulse, and a plain-text-only Home/Lock Screen widget with its own independent 100-character field in Settings; Reminder and Pulse accept text overrides in Edit Widget |
 | Deep links | Notification and Live Activity taps open the Today tab on the relevant date and block; an ended-block link can record completion |
 | Local data | Codable JSON persistence in Application Support, visible save/recovery failures, preservation of unreadable data, and exclusion of private app data from device/iCloud backup |
+| Text editing | Tap outside a text field, swipe the form, or use the keyboard’s Done button to dismiss it in the block editor and Settings |
 | Preferences | Reminder toggle, early-reminder and snooze timing, bundled/system/imported sound choice, widget message, haptic toggle, notification permission status, and shortcut to iOS Settings |
 | Backup | Pretty-printed JSON export and validated, size-bounded restore through native share and file-import sheets |
-| Verification | XCTest coverage for schedules, migration, archives, and backup validation; UI navigation/reorder smoke test; Lock Screen and compact/expanded Dynamic Island preview fixtures |
-| CI package | Manual or version-tag GitHub Action builds the app and embedded Live Activity extension into an unsigned IPA |
+| Test sources | XCTest cases for schedules, migration, archives, and backup validation; UI navigation/swap and keyboard-dismissal checks, progress history and migration regression tests; Lock Screen and compact/expanded Dynamic Island preview fixtures |
+| IPA packaging | Manual or version-tag GitHub Action builds the app and embedded extension into an IPA for re-signing with SideStore; the tracked workflow also includes CI tests |
 
 The code and project configuration for these behaviors are present. The JSON
 project definition, property lists, embedded widget target, sound resources,
@@ -74,11 +94,50 @@ xcodebuild test \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
-## Unsigned IPA
+## Progress history
 
-The GitHub workflow in `.github/workflows/build-ios-ipa.yml` generates the
-Xcode project, builds the native app and widget extension, and publishes an
-unsigned IPA artifact. See [`docs/github-actions-ios.md`](docs/github-actions-ios.md).
+Schedule changes and archive/restore events are saved by date. Changes apply to
+today and future days; earlier plans stay intact. A block created today never
+counts as a missed block before it existed. Completions remain visible even if
+the block is later archived or its weekdays change.
+
+Older installations and backups did not record dated plans. On migration, their
+completions are kept and schedule tracking begins today. Earlier dates appear as
+“plan not recorded” and are excluded from completion rates. New backups use
+version 5; this app still accepts versions 1–4. Export a backup before updating;
+version 5 backups cannot be imported into older app versions.
+
+The current streak counts days with at least one completed block. Known rest days
+preserve the streak without increasing it; a missed scheduled day breaks it.
+Today remains open until midnight. Dashboard and widget snapshots share this rule.
+
+## Install with SideStore
+
+SideStore is the default installation route for this project. Build or download
+`ProjectIstiqamah-SideStore.ipa`, then import and sign it through SideStore using
+your Apple ID. A paid Developer membership and TestFlight are not required for
+this route. Follow SideStore's current setup and refresh instructions; free
+provisioning needs periodic renewal. The build artifact is not directly installable
+until SideStore signs it.
+
+The tracked workflow in `.github/workflows/build-ios-ipa.yml` includes simulator
+CI tests plus manual/tag IPA packaging. A separate build-only replacement was
+provided as text for manual application; it has not replaced the tracked file.
+See the [build guide](docs/github-actions-ios.md) for the distinction.
+
+Before updating, export a JSON backup from Settings. Verify widgets can read
+shared data after SideStore signs both the app and extension. Keep the same app
+identity when updating to retain local data; export before reinstalling.
+
+## App logo
+
+<img src="artifacts/project-istiqamah/assets/images/icon.png" width="160" alt="Istiqamah: sculpted green i on an edge-to-edge reflective glass background">
+
+The original logo keeps its sculpted shape, with subtle contrast, color, and
+sharpness enhancements. Soft reflections, a luminous lip, and diffused depth give the glass finish;
+the background fills the square without an inset rim. Widgets use its native SwiftUI silhouette. See the [design system](artifacts/project-istiqamah/DESIGN_SYSTEM.md)
+for regeneration instructions. The [Live Activity guide](artifacts/project-istiqamah/DYNAMIC_ISLAND_README.md)
+explains the widget surfaces and color behavior.
 
 ## Repository structure
 
@@ -142,10 +201,11 @@ unsigned IPA artifact. See [`docs/github-actions-ios.md`](docs/github-actions-io
 
 ## Data and privacy
 
-Task content and preferences stay in the app's Application Support directory,
+Block content, Actions, and preferences stay in the app's Application Support directory,
 which is excluded from device and iCloud backups. Data leaves the device only
 when the user explicitly shares an exported backup.
 
 ## License
 
-MIT
+The project previously declared MIT here, but this checkout has no `LICENSE`
+file. Add the intended license and copyright notice before public distribution.

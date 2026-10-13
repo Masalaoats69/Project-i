@@ -41,15 +41,43 @@ hex value. Light and dark variants resolve automatically from the system appeara
 - Cards use continuous 22-point corners, a one-point semantic border, and a
   restrained adaptive shadow.
 
-## App icon
+## App icon and widget mark
 
-`assets/images/icon.png` is a full-bleed 1024 × 1024 RGB PNG. It uses the same
-deep green, mint, graphite, and warm-white identity as the interface. Keep the
-source square and unmasked; iOS applies the device-appropriate icon shape.
+The original identity is a sculpted green lowercase `i` with a flowing mint
+sweep and gentle highlights. The enhanced version keeps the logo silhouette
+intact on a reflective silver background that fills the square. A feathered green-chroma mask applies
+10% more saturation and 6% more contrast to the green artwork, followed by a
+restrained sharpening pass. A green-chroma mask isolates the sculpture from the
+original inset tile. Broad reflected light replaces the inset tile background. A pronounced specular
+reflection, brighter jade tint, inner bevel, luminous lip, and diffused shadow
+give the original sculpture visible glass depth at Home Screen size. There is no inset tile rim or tiny outer gap. This is rendered PNG
+artwork; it does not add a system-responsive Liquid Glass material or claim an
+official iOS 27 treatment.
 
-## Widget mark
+`assets/images/icon.png` remains a square, opaque 1024 × 1024 RGB PNG. There is no
+baked-in outer rim or rounded tile; iOS applies its own outer icon mask.
+`Sources/Widgets/IstiqamahMark.swift` preserves the original native SwiftUI
+silhouette with configurable `primary` and `secondary` colors.
 
-`Sources/Widgets/IstiqamahMark.swift` recreates the icon's abstract `i` as
-native SwiftUI paths. Use this compact mark in Dynamic Island and widget
-contexts where the full glass app-icon artwork would lose clarity. It inherits
-the semantic primary and mint colors and remains crisp in tinted widget modes.
+Regenerate the enhanced PNG from the repository root:
+
+```bash
+python3 -m venv /tmp/istiqamah-artwork
+/tmp/istiqamah-artwork/bin/pip install Pillow==11.3.0
+/tmp/istiqamah-artwork/bin/python scripts/generate-app-icon.py
+```
+
+The script always starts from `scripts/artwork/icon-original.png`, so repeated
+runs never compound the adjustments. It does not generate the SwiftUI mark.
+Pillow is an artwork development dependency only. Inspect the installed icon
+and the widget mark on an iPhone before distributing a build.
+
+## Block colors
+
+Focus widgets and Live Activities use seven subtle palettes: sage, blue,
+lavender, rose, peach, sand, and teal. `BlockWidgetPalette.swift` maps a block's
+UUID to a palette; refreshes never choose a new random color. This is identity
+color, not completion status. The main app retains its semantic green palette.
+Home Screen colors adapt to light/dark appearance; iOS may render accessory or
+tinted widgets in monochrome. Block name, intention, timer, and status remain
+textual so color is not the only signal.

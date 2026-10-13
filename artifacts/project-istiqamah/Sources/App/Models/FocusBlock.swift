@@ -18,6 +18,8 @@ struct FocusBlock: Identifiable, Codable, Hashable {
     var completedDates: Set<String>
     var weekdays: Set<Int>
     var archivedAt: Date?
+    var scheduleHistory: [BlockScheduleRevision]
+    var hasCompleteScheduleHistory: Bool
 
     init(
         id: UUID = UUID(),
@@ -28,7 +30,8 @@ struct FocusBlock: Identifiable, Codable, Hashable {
         actions: [BlockAction] = [],
         completedDates: Set<String> = [],
         weekdays: Set<Int> = FocusBlock.everyDay,
-        archivedAt: Date? = nil
+        archivedAt: Date? = nil,
+        createdAt: Date = Date()
     ) {
         self.id = id
         self.name = name
@@ -39,6 +42,12 @@ struct FocusBlock: Identifiable, Codable, Hashable {
         self.completedDates = completedDates
         self.weekdays = weekdays
         self.archivedAt = archivedAt
+        self.scheduleHistory = [BlockScheduleRevision(
+            effectiveDate: DateTools.key(createdAt),
+            weekdays: weekdays,
+            isArchived: archivedAt != nil
+        )]
+        self.hasCompleteScheduleHistory = true
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -51,6 +60,8 @@ struct FocusBlock: Identifiable, Codable, Hashable {
         case completedDates
         case weekdays
         case archivedAt
+        case scheduleHistory
+        case hasCompleteScheduleHistory
     }
 
     init(from decoder: Decoder) throws {
@@ -64,6 +75,12 @@ struct FocusBlock: Identifiable, Codable, Hashable {
         completedDates = try values.decodeIfPresent(Set<String>.self, forKey: .completedDates) ?? []
         weekdays = try values.decodeIfPresent(Set<Int>.self, forKey: .weekdays) ?? Self.everyDay
         archivedAt = try values.decodeIfPresent(Date.self, forKey: .archivedAt)
+        // Older versions did not save schedule history. Keep their completions,
+        // but never infer past plans from today's schedule.
+        scheduleHistory = try values.decodeIfPresent([BlockScheduleRevision].self, forKey: .scheduleHistory) ?? [
+            BlockScheduleRevision(effectiveDate: DateTools.key(Date()), weekdays: weekdays, isArchived: archivedAt != nil)
+        ]
+        hasCompleteScheduleHistory = try values.decodeIfPresent(Bool.self, forKey: .hasCompleteScheduleHistory) ?? false
     }
 }
 
