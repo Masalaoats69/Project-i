@@ -48,10 +48,24 @@ def render_icon():
             pixels.append(tuple(round(min(255, max(0, base + shift))) for shift in (-2, 1, 4)))
             # A restrained specular reflection follows the original sculpture.
             reflection = math.exp(-((v - (0.17 + 0.32*u)) / 0.085)**2)
-            sheen_pixels.append(round(reflection * 30))
+            sheen_pixels.append(round(reflection * 110))
     background.putdata(pixels)
     sheen.putdata(sheen_pixels)
+    # Brighter jade glass makes the material change visible at Home Screen size.
+    result = Image.blend(result, Image.new('RGB', original.size, (132, 209, 174)), 0.28)
+    result = ImageEnhance.Brightness(result).enhance(1.13)
     result = Image.composite(Image.new('RGB', original.size, (240, 255, 247)), result, sheen)
+
+    # An inner bevel follows the original silhouette, not the app-icon boundary.
+    inner_rim = ImageChops.subtract(logo_mask, logo_mask.filter(ImageFilter.MinFilter(21)))
+    inner_rim = inner_rim.filter(ImageFilter.GaussianBlur(2))
+    upper_left = Image.new('L', original.size)
+    upper_left.paste(logo_mask, (5, 5))
+    highlight = ImageChops.subtract(logo_mask, upper_left).filter(ImageFilter.GaussianBlur(1.1))
+    result = Image.composite(Image.new('RGB', original.size, (196, 249, 220)), result,
+                             inner_rim.point(lambda value: round(value * 0.55)))
+    result = Image.composite(Image.new('RGB', original.size, (248, 255, 251)), result,
+                             highlight.point(lambda value: round(value * 0.9)))
 
     # A diffused shadow and luminous lip give the mark depth, without a tile rim.
     shadow = Image.new('L', original.size)

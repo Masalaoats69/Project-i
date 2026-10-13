@@ -48,9 +48,9 @@ sweep and gentle highlights. The enhanced version keeps the logo silhouette
 intact on a reflective silver background that fills the square. A feathered green-chroma mask applies
 10% more saturation and 6% more contrast to the green artwork, followed by a
 restrained sharpening pass. A green-chroma mask isolates the sculpture from the
-original inset tile. Broad reflected light replaces the inset tile background. A faint specular
-reflection, luminous lip, and diffused shadow give the green sculpture glass
-depth. There is no inset tile rim or tiny outer gap. This is rendered PNG
+original inset tile. Broad reflected light replaces the inset tile background. A pronounced specular
+reflection, brighter jade tint, inner bevel, luminous lip, and diffused shadow
+give the original sculpture visible glass depth at Home Screen size. There is no inset tile rim or tiny outer gap. This is rendered PNG
 artwork; it does not add a system-responsive Liquid Glass material or claim an
 official iOS 27 treatment.
 
